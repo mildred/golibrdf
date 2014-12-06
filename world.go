@@ -92,6 +92,28 @@ func (world *World) GetRasqalWorld() *C.rasqal_world {
 	return C.librdf_world_get_rasqal(world.librdf_world)
 }
 
+//Display a list of parser names.
+func (world *World) PrintParserNames() []string {
+	var c C.uint
+	c = 0
+
+	var parserNames [20]string
+	var parserDescription *C.raptor_syntax_description
+	defer C.free(unsafe.Pointer(parserDescription))
+
+	for {
+		if parserDescription = C.librdf_parser_get_description(world.librdf_world, c); parserDescription == nil {
+			break
+		}
+
+		parserNames[c] = C.GoString(*parserDescription.names)
+		c++
+	}
+
+	
+	return parserNames[0:c]
+}
+
 //GuessParserName is used to guess the appropriate parser given a URI
 func (world *World) GuessParserName(uri *Uri) string {
 	var cUriAsString *C.uchar
