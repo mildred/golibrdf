@@ -64,7 +64,17 @@ func NewModel(world *World, storage *Storage, options string) (*Model, error) {
 
 //AddStatement adds the specified statement to the model
 func (model *Model) AddStatement(statement *Statement) (err error) {
-	C.librdf_model_add_statement(model.librdf_model, statement.librdf_statement)
+	if C.librdf_model_add_statement(model.librdf_model, statement.librdf_statement) != 0 {
+		return errors.New("Statement could not be added");
+	}
+	return nil
+}
+
+//ContextAddStatement adds the specified statement to the model on a given graph
+func (model *Model) ContextAddStatement(context *Node, statement *Statement) (err error) {
+	if C.librdf_model_context_add_statement(model.librdf_model, context.librdf_node, statement.librdf_statement) != 0 {
+		return errors.New("Statement could not be added");
+	}
 	return nil
 }
 
@@ -170,6 +180,14 @@ func (model *Model) ContainsStatement(statement *Statement) bool {
 func (model *Model) RemoveStatement(statement *Statement) error {
 	if retCode := C.librdf_model_remove_statement(model.librdf_model, statement.librdf_statement); retCode != 0 {
 		return errors.New("Statement could not be removed")
+	}
+	return nil
+}
+
+//ContextRemoveStatement removes the specified statement to the model on a given graph
+func (model *Model) ContextRemoveStatement(context *Node, statement *Statement) (err error) {
+	if C.librdf_model_context_remove_statement(model.librdf_model, context.librdf_node, statement.librdf_statement) != 0 {
+		return errors.New("Statement could not be removed");
 	}
 	return nil
 }

@@ -54,7 +54,27 @@ func NewStorage(world *World, storageName string, name string, options string) (
 	storage.librdf_storage = C.librdf_new_storage(world.librdf_world, cStorageName, cName, cOptions)
 
 	if storage.librdf_storage == nil {
-		return nil, errors.New("Unable to make new storage.  Call to librdf_storage failed.")
+		return nil, errors.New("Unable to make new storage.  Call to librdf_new_storage failed.")
+	}
+
+	runtime.SetFinalizer(&storage, (*Storage).Free)
+
+	return &storage, nil
+}
+
+func NewStorageWithOptions(world *World, storageName string, name string, options *Hash) (*Storage, error) {
+
+	cStorageName := C.CString(storageName)
+	defer C.free(unsafe.Pointer(cStorageName))
+
+	cName := C.CString(name)
+	defer C.free(unsafe.Pointer(cName))
+
+	storage := Storage{}
+	storage.librdf_storage = C.librdf_new_storage_with_options(world.librdf_world, cStorageName, cName, options.librdf_hash)
+
+	if storage.librdf_storage == nil {
+		return nil, errors.New("Unable to make new storage.  Call to librdf_new_storage_with_options failed.")
 	}
 
 	runtime.SetFinalizer(&storage, (*Storage).Free)
