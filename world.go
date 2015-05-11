@@ -27,6 +27,7 @@ package golibrdf
 // #include <string.h>
 // #include <strings.h>
 // #include <librdf.h>
+// int cgo_call_librdf_log_level_func(void *user_data, char *message, va_list arguments);
 import "C"
 
 import (
@@ -175,4 +176,24 @@ func (world *World) SetDigest(name string) {
 	defer C.free(unsafe.Pointer(cName))
 
 	C.librdf_world_set_digest(world.librdf_world, cName)
+}
+
+//export go_call_librdf_log_level_func
+func go_call_librdf_log_level_func(f *func(message string) int, message *C.char) C.int {
+	n := (*f)(C.GoString(message))
+	return C.int(n)
+}
+
+func (world *World) SetError(cb func(message string) int) {
+	C.librdf_world_set_error(
+		world.librdf_world,
+		unsafe.Pointer(&cb),
+		(C.librdf_log_level_func)(unsafe.Pointer(C.cgo_call_librdf_log_level_func)))
+}
+
+func (world *World) SetWarning(cb func(message string) int) {
+	C.librdf_world_set_warning(
+		world.librdf_world,
+		unsafe.Pointer(&cb),
+		(C.librdf_log_level_func)(unsafe.Pointer(C.cgo_call_librdf_log_level_func)))
 }
