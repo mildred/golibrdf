@@ -3,12 +3,12 @@
 * This file forms part of the golibrdf package containing go language bindings,
 * tests and examples for the Redland RDF library.
 *
-* Please refer to http://librdf.org for copyright and licence information 
-* on the Redland libraries that this package wraps 
+* Please refer to http://librdf.org for copyright and licence information
+* on the Redland libraries that this package wraps
 *
-* This golibrdf package is: 
+* This golibrdf package is:
 * 	Copyright (C) 2013, Phillip Pettit http://ppettit.net/
-* 
+*
 * This package is licensed under the following three licenses as alternatives:
 * 1. GNU Lesser General Public License (LGPL) V2.1 or any newer version
 * 2. GNU General Public License (GPL) V2 or any newer version
@@ -65,7 +65,15 @@ func NewModel(world *World, storage *Storage, options string) (*Model, error) {
 //AddStatement adds the specified statement to the model
 func (model *Model) AddStatement(statement *Statement) (err error) {
 	if C.librdf_model_add_statement(model.librdf_model, statement.librdf_statement) != 0 {
-		return errors.New("Statement could not be added");
+		return errors.New("Statement could not be added")
+	}
+	return nil
+}
+
+//AddStatements add a stream of statements to the model
+func (model *Model) AddStatements(stream *Stream) (err error) {
+	if C.librdf_model_add_statements(model.librdf_model, stream.librdf_stream) != 0 {
+		return errors.New("Statements could not be added")
 	}
 	return nil
 }
@@ -73,7 +81,7 @@ func (model *Model) AddStatement(statement *Statement) (err error) {
 //ContextAddStatement adds the specified statement to the model on a given graph
 func (model *Model) ContextAddStatement(context *Node, statement *Statement) (err error) {
 	if C.librdf_model_context_add_statement(model.librdf_model, context.librdf_node, statement.librdf_statement) != 0 {
-		return errors.New("Statement could not be added");
+		return errors.New("Statement could not be added")
 	}
 	return nil
 }
@@ -187,7 +195,7 @@ func (model *Model) RemoveStatement(statement *Statement) error {
 //ContextRemoveStatement removes the specified statement to the model on a given graph
 func (model *Model) ContextRemoveStatement(context *Node, statement *Statement) (err error) {
 	if C.librdf_model_context_remove_statement(model.librdf_model, context.librdf_node, statement.librdf_statement) != 0 {
-		return errors.New("Statement could not be removed");
+		return errors.New("Statement could not be removed")
 	}
 	return nil
 }
@@ -265,25 +273,7 @@ func (model *Model) ExecuteQueryToResultsChannel(query *Query, bufferSize int) (
 
 //ExecuteQueryToFormattedString executes a query and serializes the results to a string in the format provided
 func (model *Model) ExecuteQueryToFormattedString(query *Query, format string) (string, error) {
-	var librdf_query *C.librdf_query
-
-	cQueryString := C.CString(query.queryString)
-	if cQueryString != nil {
-		defer C.free(unsafe.Pointer(cQueryString))
-	}
-
-	cName := C.CString(query.name)
-	if cName != nil {
-		defer C.free(unsafe.Pointer(cName))
-	}
-
-	cFormat := C.CString(format)
-	if cFormat != nil {
-		defer C.free(unsafe.Pointer(cFormat))
-	}
-
-	librdf_query = C.librdf_new_query(query.world.librdf_world, (*C.char)(unsafe.Pointer(cName)), nil, (*C.uchar)(unsafe.Pointer(cQueryString)), nil)
-
+	librdf_query := query.getCPointer()
 	if librdf_query == nil {
 		return "", errors.New("Unable to create query for execution")
 	}
@@ -292,6 +282,11 @@ func (model *Model) ExecuteQueryToFormattedString(query *Query, format string) (
 
 	if results == nil {
 		return "", errors.New("Failed to execute query")
+	}
+
+	cFormat := C.CString(format)
+	if cFormat != nil {
+		defer C.free(unsafe.Pointer(cFormat))
 	}
 
 	var cFormattedString *C.uchar
@@ -324,6 +319,21 @@ func (model *Model) ExecuteQueryToFormattedString(query *Query, format string) (
 	formattedString := C.GoString((*C.char)(unsafe.Pointer(cFormattedString)))
 
 	return formattedString, nil
+}
+
+func (model *Model) Execute(query *Query) (*Results, error) {
+	librdf_query := query.getCPointer()
+	if librdf_query == nil {
+		return nil, errors.New("Unable to create query for execution")
+	}
+
+	results := C.librdf_model_query_execute(model.librdf_model, librdf_query)
+
+	if results == nil {
+		return nil, errors.New("Failed to execute query")
+	}
+
+	return createResults(results), nil
 }
 
 //Free cleans up memory resources held by the model
